@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Bell, Boxes, CalendarDays, ClipboardList, Cog, FileBarChart, LayoutDashboard, Menu, MessageSquareText, Moon,
+  ArrowLeft, BatteryFull, Signal, Wifi, Bell, Boxes, CalendarDays, ClipboardList, Cog, FileBarChart, LayoutDashboard, Menu, MessageSquareText, Moon,
   Scale, Sparkles, Sun, Tags, Wrench, Factory,
 } from 'lucide-react'
 import { loadData, saveData, StoreContext, type StoreValue } from './lib/store'
@@ -9,6 +9,7 @@ import { useRoute } from './lib/router'
 import { lowStock } from './lib/rules'
 import { pmDue } from './lib/ai'
 import { thDateTime } from './lib/format'
+import { QR } from './components/QR'
 import Dashboard from './pages/Dashboard'
 import WorkOrders from './pages/WorkOrders'
 import WorkOrderForm from './pages/WorkOrderForm'
@@ -94,10 +95,26 @@ export default function App() {
     case 'settings': page = <Settings route={route} />; break
     default: page = <Dashboard />
   }
+  const phoneMode = section === 'work-orders' && (sub === 'new' || sub === 'edit')
   const staffNames = data.staff.filter((s) => s.active && s.role !== 'requester').map((s) => s.name)
 
   return (
     <StoreContext.Provider value={store}>
+      {phoneMode ? (
+        <div className="m-stage">
+          <aside className="m-stage-side">
+            <a className="btn" href="#/dashboard"><ArrowLeft size={16} />กลับหน้าหลัก</a>
+            <h2>ฟอร์มบันทึกงานของช่าง</h2>
+            <p className="muted small">หน้าจอนี้ออกแบบสำหรับมือถือ ใช้มือเดียวได้ · บนคอมพิวเตอร์จะแสดงเป็นจำลองโทรศัพท์</p>
+            <QR text={window.location.href} size={120} />
+            <p className="muted small">สแกนเพื่อเปิดหน้านี้บนมือถือ (เมื่อระบบอยู่บนเซิร์ฟเวอร์จริง)</p>
+          </aside>
+          <div className="m-phone">
+            <div className="m-statusbar" aria-hidden="true"><b>{new Date().toTimeString().slice(0, 5)}</b><span className="m-notch" /><span><Signal size={14} /><Wifi size={14} /><BatteryFull size={16} /></span></div>
+            {page}
+          </div>
+        </div>
+      ) : (
       <div className="app">
         <div className={`backdrop ${navOpen ? 'open' : ''}`} onClick={() => setNavOpen(false)} />
         <aside className={`sidebar ${navOpen ? 'open' : ''}`} aria-label="เมนูหลัก">
@@ -165,6 +182,7 @@ export default function App() {
           <main className="content">{page}</main>
         </div>
       </div>
+      )}
       <div className="toast-wrap" aria-live="polite">
         {toasts.map((t) => <div key={t.id} className={`toast ${t.tone ?? ''}`}>{t.msg}</div>)}
       </div>
