@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Bell, Boxes, CalendarDays, ClipboardList, Cog, FileBarChart, LayoutDashboard, Menu, MessageSquareText, Moon,
-  Sparkles, Sun, Tags, Wrench, Factory,
+  Scale, Sparkles, Sun, Tags, Wrench, Factory,
 } from 'lucide-react'
 import { loadData, saveData, StoreContext, type StoreValue } from './lib/store'
 import type { AppData } from './lib/types'
@@ -16,6 +16,7 @@ import Assets from './pages/Assets'
 import PMCalendar from './pages/PMCalendar'
 import Inventory from './pages/Inventory'
 import Prices from './pages/Prices'
+import Compare from './pages/Compare'
 import Reports from './pages/Reports'
 import AskAI from './pages/AskAI'
 import Settings from './pages/Settings'
@@ -26,6 +27,7 @@ const NAV = [
   { to: '/assets', label: 'เครื่องจักร (Assets)', icon: Factory },
   { to: '/pm', label: 'PM Calendar', icon: CalendarDays },
   { to: '/inventory', label: 'สต็อกอะไหล่', icon: Boxes },
+  { to: '/compare', label: 'เปรียบเทียบราคา', icon: Scale },
   { to: '/prices', label: 'ราคา & Vendor', icon: Tags },
   { to: '/reports', label: 'รายงาน', icon: FileBarChart },
   { to: '/ask', label: 'ถาม AI', icon: Sparkles, ai: true },
@@ -85,6 +87,7 @@ export default function App() {
     case 'assets': page = <Assets route={route} />; break
     case 'pm': page = <PMCalendar />; break
     case 'inventory': page = <Inventory route={route} />; break
+    case 'compare': page = <Compare route={route} />; break
     case 'prices': page = <Prices route={route} />; break
     case 'reports': page = <Reports />; break
     case 'ask': page = <AskAI />; break

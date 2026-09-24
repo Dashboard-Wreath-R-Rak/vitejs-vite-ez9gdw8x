@@ -89,14 +89,21 @@ export function forecast(data: AppData, partCode: string, building: Building, le
 }
 
 // ---------- ราคา / Offer (F14) ----------
+export const VAT = 0.07
+/** ราคาต่อหน่วยที่เทียบกันได้: รวม VAT + เฉลี่ยค่าขนส่งต่อหน่วย */
+export function effectiveUnit(r: PriceRecord, qty = r.qty, withDelivery = true) {
+  const unit = r.unitPrice * (r.vatIncluded ? 1 : 1 + VAT)
+  return unit + (withDelivery ? (r.deliveryCost ?? 0) / Math.max(1, qty) : 0)
+}
+
 export interface Offer { best: PriceRecord; diffPct: number }
 export function findOffer(data: AppData, partCode: string, unitPrice: number, excludeVendor?: string): Offer | null {
   const since = new Date(); since.setMonth(since.getMonth() - data.settings.priceWindowMonths)
   const s = since.toISOString().slice(0, 10)
   const cand = data.prices.filter((p) => p.partCode === partCode && p.date >= s && p.vendorId !== excludeVendor)
   if (!cand.length) return null
-  const best = cand.reduce((a, b) => (b.unitPrice < a.unitPrice ? b : a))
-  const diffPct = ((unitPrice - best.unitPrice) / unitPrice) * 100
+  const best = cand.reduce((a, b) => (effectiveUnit(b) < effectiveUnit(a) ? b : a))
+  const diffPct = ((unitPrice - effectiveUnit(best)) / unitPrice) * 100
   return diffPct >= data.settings.offerThresholdPct ? { best, diffPct } : null
 }
 

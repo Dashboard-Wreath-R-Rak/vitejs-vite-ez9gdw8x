@@ -3,7 +3,7 @@ import { PackagePlus, SlidersHorizontal } from 'lucide-react'
 import { addMovement, log, useStore } from '../lib/store'
 import type { Route } from '../lib/router'
 import { AIBadge, Card, Empty, Field, Modal, PageHead, Tag } from '../components/ui'
-import { balances, findOffer, forecast, lastPrice, lowStock, usedBuildings } from '../lib/rules'
+import { balances, findOffer, forecast, effectiveUnit, lastPrice, lowStock, usedBuildings } from '../lib/rules'
 import { fmt, thDate, todayISO } from '../lib/format'
 import type { Building, MovementType, Part } from '../lib/types'
 
@@ -57,7 +57,7 @@ export default function Inventory({ route }: { route: Route }) {
               const isLow = onHand <= p.min && used[building].has(p.code)
               const f = forecast(data, p.code, building)
               const lp = lastPrice(data, p.code)
-              const offer = isLow && lp ? findOffer(data, p.code, lp.unitPrice, lp.vendorId) : null
+              const offer = isLow && lp ? findOffer(data, p.code, effectiveUnit(lp), lp.vendorId) : null
               return (
                 <tr key={p.code}>
                   <td className="code">{p.code}</td>
@@ -169,7 +169,7 @@ function MovementModal({ part, type, building, onHand, onClose }: { part: Part; 
         {offer && (
           <div className="suggest">
             <AIBadge label="Offer" />
-            <span className="small">ราคานี้สูงกว่าราคาต่ำสุดใน {data.settings.priceWindowMonths} เดือน {offer.diffPct.toFixed(1)}% ({fmt(offer.best.unitPrice, 2)} บาท จาก {data.vendors.find((v) => v.id === offer.best.vendorId)?.name}, {thDate(offer.best.date)}) — <a href={`#/prices?part=${part.code}`}>ไปหน้า Challenge</a></span>
+            <span className="small">ราคานี้สูงกว่าราคาต่ำสุดใน {data.settings.priceWindowMonths} เดือน {offer.diffPct.toFixed(1)}% ({fmt(effectiveUnit(offer.best), 2)} บาท จาก {data.vendors.find((v) => v.id === offer.best.vendorId)?.name}, {thDate(offer.best.date)}) — <a href={`#/prices?part=${part.code}`}>ไปหน้า Challenge</a></span>
           </div>
         )}
         {type === 'IN' && <p className="small muted">หลังรับเข้า: {onHand + n} {part.unit}</p>}

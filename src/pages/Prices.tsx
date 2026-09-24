@@ -3,7 +3,7 @@ import { BadgeDollarSign, Copy, Gavel, Plus, Tags } from 'lucide-react'
 import { log, notify, useStore } from '../lib/store'
 import type { Route } from '../lib/router'
 import { AIBadge, Card, Empty, Field, Modal, PageHead, Stat, Tag } from '../components/ui'
-import { findOffer, isThisMonth, lastPrice, lowStock, type Offer } from '../lib/rules'
+import { findOffer, isThisMonth, effectiveUnit, lastPrice, lowStock, type Offer } from '../lib/rules'
 import { challengeDraft } from '../lib/ai'
 import { addDays, fmt, thDate, todayISO, uid } from '../lib/format'
 import type { Challenge, ChallengeStatus } from '../lib/types'
@@ -28,11 +28,11 @@ export default function Prices({ route }: { route: Route }) {
   const history = data.prices.filter((p) => p.partCode === partCode).sort((a, b) => (a.date < b.date ? 1 : -1))
   const since = addDays(todayISO(), -data.settings.priceWindowMonths * 30)
   const inWindow = history.filter((h) => h.date >= since)
-  const min = inWindow.length ? Math.min(...inWindow.map((h) => h.unitPrice)) : null
+  const min = inWindow.length ? Math.min(...inWindow.map((h) => effectiveUnit(h))) : null
 
   const lowOffers = useMemo(() => lowStock(data).map((l) => {
     const lp = lastPrice(data, l.part.code)
-    return lp ? { l, lp, o: findOffer(data, l.part.code, lp.unitPrice, lp.vendorId) } : null
+    return lp ? { l, lp, o: findOffer(data, l.part.code, effectiveUnit(lp), lp.vendorId) } : null
   }).filter((x) => x?.o), [data])
 
   const savingMonth = data.challenges.filter((c) => c.finalPrice != null && isThisMonth(c.createdAt.slice(0, 10))).reduce((s, c) => s + Math.max(0, c.currentPrice - c.finalPrice!), 0)
@@ -57,7 +57,7 @@ export default function Prices({ route }: { route: Route }) {
 
   return (
     <>
-      <PageHead title="ราคา & Vendor" sub="เทียบราคากับประวัติของบริษัทเอง (Offer) และส่ง Challenge ขอปรับราคา" />
+      <PageHead title="ราคา & Vendor" sub="เทียบราคากับประวัติของบริษัทเอง (Offer) และส่ง Challenge ขอปรับราคา" actions={<a className="btn" href="#/compare">เปรียบเทียบราคาทุกรายการ</a>} />
       <div className="stats">
         <Stat icon={<BadgeDollarSign size={18} />} tone="ai" small="เดือนนี้ (บาท/หน่วย)" label="ประหยัดจาก Challenge" value={fmt(savingMonth)} />
         <Stat icon={<BadgeDollarSign size={18} />} tone="ok" small="สะสม (บาท/หน่วย)" label="ประหยัดทั้งหมด" value={fmt(savingAll)} />
@@ -70,7 +70,7 @@ export default function Prices({ route }: { route: Route }) {
           <div className="stack" style={{ gap: 8 }}>
             {lowOffers.map((x) => (
               <div key={x!.l.building + x!.l.part.code} className="row between">
-                <span><b>{x!.l.part.code}</b> {x!.l.part.name} ({x!.l.building} เหลือ {x!.l.onHand}) — ครั้งล่าสุด {fmt(x!.lp.unitPrice, 2)} จาก {vName(x!.lp.vendorId)} · ราคาต่ำสุด {fmt(x!.o!.best.unitPrice, 2)} จาก {vName(x!.o!.best.vendorId)} ({thDate(x!.o!.best.date)}) ถูกกว่า {x!.o!.diffPct.toFixed(1)}%</span>
+                <span><b>{x!.l.part.code}</b> {x!.l.part.name} ({x!.l.building} เหลือ {x!.l.onHand}) — ครั้งล่าสุด {fmt(effectiveUnit(x!.lp), 2)} จาก {vName(x!.lp.vendorId)} · ราคาต่ำสุด {fmt(effectiveUnit(x!.o!.best), 2)} จาก {vName(x!.o!.best.vendorId)} ({thDate(x!.o!.best.date)}) ถูกกว่า {x!.o!.diffPct.toFixed(1)}%</span>
                 <button className="btn sm" onClick={() => { setPartCode(x!.l.part.code); setVendorId(x!.lp.vendorId); setPrice(String(x!.lp.unitPrice)); setQty(String(x!.l.orderQty)) }}>ตรวจใบเสนอราคา</button>
               </div>
             ))}
@@ -103,12 +103,12 @@ export default function Prices({ route }: { route: Route }) {
               <div className="row between"><AIBadge label="Offer" /><span className="small muted">เกณฑ์ ≥ {data.settings.offerThresholdPct}% ใน {data.settings.priceWindowMonths} เดือน</span></div>
               <div className="kv">
                 <div><span>ราคานี้</span><b>{fmt(offer.q.unitPrice, 2)}</b> บาท · {vName(offer.q.vendorId)}</div>
-                <div><span>ราคาต่ำสุด</span><b>{fmt(offer.o.best.unitPrice, 2)}</b> บาท · {vName(offer.o.best.vendorId)} ({thDate(offer.o.best.date)})</div>
-                <div><span>ส่วนต่าง</span><b style={{ color: 'var(--danger)' }}>{offer.o.diffPct.toFixed(1)}%</b> ({fmt((offer.q.unitPrice - offer.o.best.unitPrice) * offer.q.qty)} บาท ทั้งล็อต)</div>
+                <div><span>ราคาต่ำสุด</span><b>{fmt(effectiveUnit(offer.o.best), 2)}</b> บาท · {vName(offer.o.best.vendorId)} ({thDate(offer.o.best.date)})</div>
+                <div><span>ส่วนต่าง</span><b style={{ color: 'var(--danger)' }}>{offer.o.diffPct.toFixed(1)}%</b> ({fmt((offer.q.unitPrice - effectiveUnit(offer.o.best)) * offer.q.qty)} บาท ทั้งล็อต)</div>
               </div>
               <div className="row">
-                <button className="btn primary sm" onClick={() => { record({ ...offer.q, vendorId: offer.o.best.vendorId, unitPrice: offer.o.best.unitPrice }, 'ใช้ Vendor ที่ถูกกว่า'); setOffer(null); toast('บันทึก: ใช้ Vendor ที่ถูกกว่า', 'ok') }}>ใช้ Vendor ที่ถูกกว่า</button>
-                <button className="btn ai sm" onClick={() => { setChModal({ ...offer.q, target: offer.o.best.unitPrice }); }}><Gavel size={14} />Challenge</button>
+                <button className="btn primary sm" onClick={() => { record({ ...offer.q, vendorId: offer.o.best.vendorId, unitPrice: Math.round(effectiveUnit(offer.o.best) * 100) / 100 }, 'ใช้ Vendor ที่ถูกกว่า'); setOffer(null); toast('บันทึก: ใช้ Vendor ที่ถูกกว่า', 'ok') }}>ใช้ Vendor ที่ถูกกว่า</button>
+                <button className="btn ai sm" onClick={() => { setChModal({ ...offer.q, target: Math.round(effectiveUnit(offer.o.best) * 100) / 100 }); }}><Gavel size={14} />Challenge</button>
               </div>
               <div className="row" style={{ flexWrap: 'nowrap' }}>
                 <input className="input" placeholder="เหตุผลที่ใช้ราคานี้ (บังคับ)" value={reason} onChange={(e) => setReason(e.target.value)} />
@@ -118,7 +118,7 @@ export default function Prices({ route }: { route: Route }) {
           )}
         </Card>
 
-        <Card title={`ประวัติราคา ${part?.name ?? ''}`}>
+        <Card title={`ประวัติราคา ${part?.name ?? ''}`} right={<a className="small" href={`#/compare/${encodeURIComponent(partCode)}`}>เทียบทุก Vendor</a>}>
           {history.length === 0 ? <Empty>ยังไม่มีประวัติราคา</Empty> : (
             <div className="table-wrap"><table>
               <thead><tr><th>วันที่</th><th>Vendor</th><th className="num">ราคา/หน่วย</th><th className="num">จำนวน</th><th>ที่มา</th></tr></thead>
@@ -127,7 +127,7 @@ export default function Prices({ route }: { route: Route }) {
                   <tr key={h.id} style={h.date < since ? { opacity: 0.55 } : undefined}>
                     <td className="nowrap">{thDate(h.date)}</td>
                     <td>{vName(h.vendorId)}{h.decision && <div className="small muted">{h.decision}</div>}</td>
-                    <td className="num">{fmt(h.unitPrice, 2)}{h.unitPrice === min && h.date >= since && <div><Tag tone="ok">ต่ำสุด</Tag></div>}</td>
+                    <td className="num">{fmt(effectiveUnit(h), 2)}{(!h.vatIncluded || h.deliveryCost) && <div className="small muted">ใบเสนอ {fmt(h.unitPrice, 2)}{!h.vatIncluded ? ' +VAT' : ''}{h.deliveryCost ? ` +ส่ง ${fmt(h.deliveryCost)}` : ''}</div>}{effectiveUnit(h) === min && h.date >= since && <div><Tag tone="ok">ต่ำสุด</Tag></div>}</td>
                     <td className="num">{h.qty}</td>
                     <td><Tag>{h.source}</Tag></td>
                   </tr>

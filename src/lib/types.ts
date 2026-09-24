@@ -126,6 +126,8 @@ export interface PriceRecord {
   unitPrice: number
   qty: number
   vatIncluded: boolean
+  deliveryCost?: number // ค่าขนส่งทั้งล็อต (บาท)
+  warrantyMonths?: number
   date: string
   source: 'quote' | 'PO' | 'history'
   docRef?: string

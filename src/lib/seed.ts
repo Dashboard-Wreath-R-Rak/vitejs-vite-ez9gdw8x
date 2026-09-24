@@ -3,7 +3,7 @@ import type { AppData, Asset, Building, MaintenanceEvent, StockMovement, WOStatu
 import { addDays, todayISO } from './format'
 import { catOf } from './equipment'
 
-export const DATA_VERSION = 1
+export const DATA_VERSION = 2
 
 const parts: AppData['parts'] = [
   { code: 'EE-11', hqCode: 'EE-11', cscCode: 'E-11', name: 'หลอด LED T8 18W', category: 'Electrical', unit: 'หลอด', min: 40, max: 120, boxNo: 'A1', active: true },
@@ -59,6 +59,8 @@ const vendors: AppData['vendors'] = [
   { id: 'v3', name: 'บจก. เอชวีเอซีซัพพลาย (ตัวอย่าง)', role: 'supplier', phone: '02-000-0003', contact: 'คุณซี', email: 'quote@example-hvac.co.th' },
   { id: 'v4', name: 'บจก. เครื่องปรับอากาศไทย (ตัวอย่าง)', role: 'dealer', phone: '02-000-0004', contact: 'คุณดี' },
   { id: 'v5', name: 'หจก. ช่างรวมวิศวกรรม (ตัวอย่าง)', role: 'installer', phone: '02-000-0005', contact: 'คุณอี' },
+  { id: 'v6', name: 'บจก. อะไหล่ช่างออนไลน์ (ตัวอย่าง)', role: 'supplier', phone: '02-000-0006', contact: 'คุณเอฟ', email: 'shop@example-parts.co.th' },
+  { id: 'v7', name: 'หจก. วัสดุก่อสร้างรวม (ตัวอย่าง)', role: 'supplier', phone: '02-000-0007', contact: 'คุณจี', email: 'sale@example-build.co.th' },
 ]
 
 function ev(no: number, date: string, item: string, price: number | null, by = 'บจก. แอร์เซอร์วิส', fixedFrom?: string): MaintenanceEvent {
@@ -195,18 +197,35 @@ function buildMovements(wos: WorkOrder[]): StockMovement[] {
   return mv
 }
 
+// ราคาตัวอย่าง: [อะไหล่, vendor, ราคา/หน่วย, รวม VAT?, ค่าขนส่งทั้งล็อต, รับประกัน (เดือน), กี่วันก่อน, จำนวน, ที่มา]
+type P = [string, string, number, boolean, number, number, number, number, 'quote' | 'PO' | 'history']
+const PRICE_ROWS: P[] = [
+  ['AC-01', 'v1', 410, true, 0, 0, 200, 60, 'PO'], ['AC-01', 'v3', 355, true, 0, 0, 120, 40, 'quote'], ['AC-01', 'v6', 320, false, 350, 0, 45, 40, 'quote'],
+  ['AC-01', 'v1', 395, true, 0, 0, 500, 60, 'history'], ['AC-01', 'v3', 368, true, 0, 0, 20, 40, 'quote'],
+  ['AC-02', 'v1', 950, true, 0, 3, 150, 4, 'PO'], ['AC-02', 'v3', 820, true, 0, 3, 80, 6, 'quote'], ['AC-02', 'v6', 760, false, 120, 0, 30, 6, 'quote'],
+  ['AC-03', 'v3', 1150, true, 0, 6, 40, 4, 'quote'], ['AC-03', 'v1', 1390, true, 0, 6, 300, 4, 'history'], ['AC-03', 'v6', 1080, false, 150, 3, 60, 4, 'quote'],
+  ['AC-04', 'v1', 900, true, 0, 3, 210, 4, 'PO'], ['AC-04', 'v3', 780, true, 0, 3, 95, 6, 'quote'],
+  ['AC-05', 'v3', 420, true, 0, 6, 70, 6, 'quote'], ['AC-05', 'v6', 365, true, 80, 3, 25, 6, 'quote'],
+  ['AC-06', 'v1', 1250, true, 0, 0, 180, 4, 'PO'], ['AC-06', 'v3', 1090, true, 0, 0, 50, 4, 'quote'],
+  ['AC-07', 'v1', 380, true, 0, 12, 140, 5, 'PO'], ['AC-07', 'v2', 290, true, 0, 12, 65, 5, 'quote'], ['AC-07', 'v6', 255, false, 60, 6, 15, 5, 'quote'],
+  ['EE-11', 'v2', 89, true, 0, 12, 60, 100, 'PO'], ['EE-11', 'v6', 79, false, 200, 12, 35, 100, 'quote'], ['EE-11', 'v2', 95, true, 0, 12, 260, 100, 'history'],
+  ['EE-12', 'v2', 145, true, 0, 12, 110, 40, 'PO'], ['EE-12', 'v6', 139, true, 0, 24, 40, 40, 'quote'],
+  ['EE-43', 'v2', 185, true, 0, 12, 90, 10, 'PO'], ['EE-43', 'v6', 172, true, 50, 12, 28, 10, 'quote'],
+  ['EE-44', 'v2', 120, true, 0, 12, 130, 20, 'PO'], ['EE-44', 'v7', 98, true, 0, 6, 55, 20, 'quote'],
+  ['EE-55', 'v2', 35, true, 0, 0, 100, 48, 'PO'], ['EE-55', 'v7', 29, true, 0, 0, 20, 48, 'quote'],
+  ['SAN-02', 'v7', 450, true, 0, 12, 160, 6, 'PO'], ['SAN-02', 'v6', 520, true, 0, 24, 75, 6, 'quote'],
+  ['SAN-03', 'v7', 85, true, 0, 6, 140, 20, 'PO'], ['SAN-03', 'v6', 78, false, 100, 6, 30, 20, 'quote'],
+  ['SAN-05', 'v7', 690, true, 0, 12, 120, 5, 'PO'], ['SAN-05', 'v6', 640, true, 0, 12, 50, 5, 'quote'],
+  ['STOCK-01', 'v7', 980, true, 0, 0, 90, 4, 'PO'], ['STOCK-01', 'v6', 1050, true, 0, 0, 35, 4, 'quote'],
+  ['STOCK-03', 'v7', 115, true, 300, 0, 150, 30, 'PO'], ['STOCK-03', 'v6', 105, true, 0, 0, 40, 30, 'quote'],
+]
+
 function buildPrices(): AppData['prices'] {
   const t = todayISO()
-  return [
-    { id: 'p1', partCode: 'AC-01', vendorId: 'v1', unitPrice: 410, qty: 60, vatIncluded: true, date: addDays(t, -200), source: 'PO' },
-    { id: 'p2', partCode: 'AC-01', vendorId: 'v3', unitPrice: 355, qty: 40, vatIncluded: true, date: addDays(t, -120), source: 'quote' },
-    { id: 'p3', partCode: 'AC-02', vendorId: 'v1', unitPrice: 950, qty: 4, vatIncluded: true, date: addDays(t, -150), source: 'PO' },
-    { id: 'p4', partCode: 'AC-02', vendorId: 'v3', unitPrice: 820, qty: 6, vatIncluded: true, date: addDays(t, -80), source: 'quote' },
-    { id: 'p5', partCode: 'EE-11', vendorId: 'v2', unitPrice: 89, qty: 100, vatIncluded: true, date: addDays(t, -60), source: 'PO' },
-    { id: 'p6', partCode: 'EE-43', vendorId: 'v2', unitPrice: 185, qty: 10, vatIncluded: true, date: addDays(t, -90), source: 'PO' },
-    { id: 'p7', partCode: 'AC-03', vendorId: 'v3', unitPrice: 1150, qty: 4, vatIncluded: true, date: addDays(t, -40), source: 'quote' },
-    { id: 'p8', partCode: 'AC-03', vendorId: 'v1', unitPrice: 1390, qty: 4, vatIncluded: true, date: addDays(t, -300), source: 'history' },
-  ]
+  return PRICE_ROWS.map(([partCode, vendorId, unitPrice, vatIncluded, deliveryCost, warrantyMonths, ago, qty, source], i) => ({
+    id: 'p' + (i + 1), partCode, vendorId, unitPrice, vatIncluded, deliveryCost: deliveryCost || undefined, warrantyMonths: warrantyMonths || undefined,
+    qty, date: addDays(t, -ago), source,
+  }))
 }
 
 export function seedData(): AppData {
